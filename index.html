@@ -14,12 +14,12 @@
   body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(circle at 20% 30%,#008fa012 0%,transparent 50%),radial-gradient(circle at 80% 70%,#eab43a08 0%,transparent 50%),linear-gradient(rgba(0,143,160,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,143,160,.04) 1px,transparent 1px);background-size:100% 100%,100% 100%,40px 40px,40px 40px;pointer-events:none;z-index:0}
   .app{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:24px 20px 40px}
 
-  .header{display:flex;align-items:flex-end;gap:16px;margin-bottom:20px;padding:18px 24px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,143,160,.15)}
-  .logo{width:64px;height:64px;flex-shrink:0;margin-left:-8px}
-  .logo img{width:100%;height:100%;object-fit:contain;object-position:left bottom;display:block}
-  .header-text{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;margin-left:-6px}
-  .brand-name{height:32px;max-width:100%;width:auto;object-fit:contain;object-position:left center;display:block;margin-bottom:4px;margin-left:-5px}
-  .brand-tagline{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--accent);letter-spacing:2px;text-transform:uppercase}
+  .header{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px;padding:18px 24px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,143,160,.15)}
+  .logo{width:64px;height:64px;flex-shrink:0}
+  .logo img{width:100%;height:100%;object-fit:contain;display:block}
+  .header-text{display:flex;flex-direction:column;justify-content:center}
+  .brand-name{height:32px;width:auto;object-fit:contain;object-position:left center;display:block;margin-bottom:4px;margin-left:-5px}
+  .brand-tagline{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:-15px}
 
   /* Toolbar: Model + Connect */
   .toolbar-row{display:flex;gap:10px;margin-bottom:12px}
@@ -66,10 +66,10 @@
   .btn-cam.active{background:var(--red);border-color:var(--red);color:#fff}
   .btn-cam svg{width:14px;height:14px}
 
-  /* Camera area — taller for mobile gesture visibility */
+  /* Camera area */
   .camera-area{padding:12px;display:flex;flex-direction:column;align-items:center;gap:0}
-  .camera-wrapper{position:relative;width:100%;max-width:500px}
-  .camera-container{position:relative;width:100%;aspect-ratio:3/4;background:#000;border-radius:12px;overflow:hidden;border:2px solid var(--border)}
+  .camera-wrapper{position:relative;width:100%;max-width:640px}
+  .camera-container{position:relative;width:100%;aspect-ratio:4/3;background:#000;border-radius:12px;overflow:hidden;border:2px solid var(--border)}
   .camera-container video{width:100%;height:100%;object-fit:cover;display:block}
   .camera-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface);z-index:2;flex-direction:column;gap:12px}
   .camera-overlay.hidden{display:none}
@@ -122,7 +122,8 @@
   @media(max-width:600px){
     .app{padding:12px 10px 32px}.header{padding:14px 16px;gap:14px}.logo{width:52px;height:52px}.brand-name{height:26px}.brand-tagline{font-size:10px;letter-spacing:1.5px}
     .toolbar-row{flex-direction:row}
-    .camera-wrapper{max-width:100%}.camera-container{aspect-ratio:3/4}
+    .camera-wrapper{max-width:100%}
+    .camera-container{aspect-ratio:3/4}
     .gesture-name{font-size:20px}.gesture-conf{font-size:24px}
     .camera-area{padding:8px}
   }
