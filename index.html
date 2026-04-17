@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ElectroBotics — Gesture Controller</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+<style>
+  :root{--bg:#061f22;--surface:#0a373a;--surface-raised:#0f4a4e;--border:#1a5f64;--text:#f0f7f8;--text-dim:#7fa8ac;--accent:#008fa0;--accent-glow:#008fa080;--green:#8ab600;--green-glow:#8ab60050;--red:#d76241;--red-glow:#d7624150;--amber:#eab43a;--amber-glow:#eab43a50;--font-mono:'JetBrains Mono',monospace;--font-body:'DM Sans',sans-serif;--radius:12px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(circle at 20% 30%,#008fa012 0%,transparent 50%),radial-gradient(circle at 80% 70%,#eab43a08 0%,transparent 50%),linear-gradient(rgba(0,143,160,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,143,160,.04) 1px,transparent 1px);background-size:100% 100%,100% 100%,40px 40px,40px 40px;pointer-events:none;z-index:0}
+  .app{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:24px 20px 40px}
+
+  .header{display:flex;align-items:flex-end;gap:16px;margin-bottom:20px;padding:18px 24px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,143,160,.15)}
+  .logo{width:64px;height:64px;flex-shrink:0;margin-left:-8px}
+  .logo img{width:100%;height:100%;object-fit:contain;object-position:left bottom;display:block}
+  .header-text{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;margin-left:-6px}
+  .brand-name{height:32px;max-width:100%;width:auto;object-fit:contain;object-position:left center;display:block;margin-bottom:4px;margin-left:-5px}
+  .brand-tagline{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--accent);letter-spacing:2px;text-transform:uppercase}
+
+  /* Toolbar: Model + Connect */
+  .toolbar-row{display:flex;gap:10px;margin-bottom:12px}
+  .toolbar-row>*{flex:1}
+  .btn{font-family:var(--font-mono);font-weight:600;font-size:13px;border:none;cursor:pointer;border-radius:10px;padding:10px 16px;transition:all .25s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .btn-model{background:var(--surface);color:var(--amber);border:1px solid var(--border)}
+  .btn-model:hover{border-color:var(--amber);background:var(--surface-raised)}
+  .btn-model.loaded{color:var(--green);border-color:var(--green)}
+  .btn-connect{background:linear-gradient(135deg,var(--accent),#00b5c9);color:#fff;box-shadow:0 4px 16px var(--accent-glow)}
+  .btn-connect:hover{transform:translateY(-1px);box-shadow:0 6px 24px var(--accent-glow)}
+  .btn-disconnect{background:var(--surface-raised);color:var(--red);border:1px solid #d7624140}
+  .btn-disconnect:hover{background:#d7624120;border-color:var(--red)}
+
+  /* Model popup */
+  .model-popup{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;animation:slide .2s ease-out}
+  .model-popup.open{display:block}
+  .model-row{display:flex;gap:10px}
+  .model-input{flex:1;background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none}
+  .model-input:focus{border-color:var(--accent)}
+  .model-input::placeholder{color:var(--text-dim)}
+  .btn-load{background:var(--amber);color:#0a373a;padding:10px 18px;font-size:12px;font-weight:700}
+  .btn-load:hover:not(:disabled){background:#f0c050}
+  .btn-load:disabled{opacity:.3;cursor:not-allowed}
+  .model-hint{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5}
+  .model-hint a{color:var(--accent)}
+
+  /* BLE status bar */
+  .status-bar{display:none;align-items:center;justify-content:center;padding:8px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;gap:10px}
+  .status-bar.visible{display:flex}
+  .status-bar.connected{border-color:var(--green);box-shadow:0 0 20px var(--green-glow)}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red-glow);transition:all .4s}
+  .status-dot.connected{background:var(--green);box-shadow:0 0 8px var(--green-glow);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 8px var(--green-glow)}50%{box-shadow:0 0 16px var(--green-glow)}}
+  .status-label{font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--text-dim)}
+  .device-name{font-family:var(--font-mono);font-size:12px;color:var(--accent);font-weight:600}
+
+  /* Panel */
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border)}
+  .panel-title{font-family:var(--font-mono);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+  .panel-title .icon{width:18px;height:18px;opacity:.6}
+  .panel-badge{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);background:var(--surface-raised);padding:3px 8px;border-radius:6px}
+
+  /* Camera header controls */
+  .cam-header-controls{display:flex;gap:6px}
+  .btn-cam{background:var(--surface-raised);border:1px solid var(--border);color:var(--text);cursor:pointer;padding:5px 10px;border-radius:8px;font-family:var(--font-mono);font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px;transition:all .2s}
+  .btn-cam:hover:not(:disabled){border-color:var(--accent);background:#008fa015}
+  .btn-cam:disabled{opacity:.3;cursor:not-allowed}
+  .btn-cam.active{background:var(--red);border-color:var(--red);color:#fff}
+  .btn-cam svg{width:14px;height:14px}
+
+  /* Camera area */
+  .camera-area{padding:20px;display:flex;flex-direction:column;align-items:center;gap:16px}
+  .camera-container{position:relative;width:100%;max-width:420px;aspect-ratio:4/3;background:#000;border-radius:12px;overflow:hidden;border:2px solid var(--border)}
+  .camera-container video{width:100%;height:100%;object-fit:cover;display:block}
+  .camera-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface);z-index:2;flex-direction:column;gap:12px}
+  .camera-overlay.hidden{display:none}
+  .camera-overlay svg{width:48px;height:48px;color:var(--text-dim)}
+  .camera-overlay span{font-family:var(--font-mono);font-size:12px;color:var(--text-dim)}
+
+  /* Gesture card */
+  .gesture-display{width:100%;max-width:420px}
+  .gesture-card{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;background:var(--surface-raised);border:2px solid var(--border);border-radius:14px;transition:all .3s;min-height:80px}
+  .gesture-card.stable{border-color:var(--green);box-shadow:0 0 24px var(--green-glow)}
+  .gesture-card.sensing{border-color:var(--amber);box-shadow:0 0 16px var(--amber-glow)}
+  .gesture-state{font-family:var(--font-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);transition:color .3s}
+  .gesture-card.stable .gesture-state{color:var(--green)}
+  .gesture-card.sensing .gesture-state{color:var(--amber)}
+  .gesture-name{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--text-dim);transition:color .3s;margin-top:2px}
+  .gesture-card.stable .gesture-name{color:var(--green)}
+  .gesture-card.sensing .gesture-name{color:var(--amber)}
+  .gesture-conf{font-family:var(--font-mono);font-size:32px;font-weight:700;color:var(--text-dim);transition:color .3s;flex-shrink:0}
+  .gesture-card.stable .gesture-conf{color:var(--green)}
+  .gesture-card.sensing .gesture-conf{color:var(--amber)}
+
+  /* Send controls */
+  .send-controls{width:100%;max-width:420px}
+  .send-row-gesture{display:flex;align-items:center;gap:10px}
+  .auto-send-toggle{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;cursor:pointer;user-select:none;flex:1;transition:all .25s}
+  .auto-send-toggle:hover{border-color:var(--accent)}
+  .auto-send-toggle.active{border-color:var(--green);background:#8ab60015}
+  .auto-send-toggle input{accent-color:var(--green);cursor:pointer;width:16px;height:16px}
+  .auto-send-toggle span{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text)}
+  .interval-input{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;opacity:.4;transition:all .25s;pointer-events:none}
+  .interval-input.active{opacity:1;pointer-events:auto;border-color:var(--accent)}
+  .interval-label{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-dim);white-space:nowrap}
+  .interval-field{width:48px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 4px;color:var(--text);font-family:var(--font-mono);font-size:13px;font-weight:700;text-align:center;outline:none;-moz-appearance:textfield}
+  .interval-field::-webkit-inner-spin-button,.interval-field::-webkit-outer-spin-button{opacity:1}
+  .interval-field:focus{border-color:var(--accent)}
+  .btn-send-gesture{background:var(--amber);color:#0a373a;padding:10px 20px;font-weight:700;font-family:var(--font-mono);font-size:13px;border:none;cursor:pointer;border-radius:10px;transition:all .25s;display:inline-flex;align-items:center;gap:6px}
+  .btn-send-gesture:hover:not(:disabled){background:#f0c050;transform:translateY(-1px)}
+  .btn-send-gesture:disabled{opacity:.3;cursor:not-allowed}
+  .send-hint{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:8px;text-align:center;opacity:0;transition:opacity .3s}
+  .send-hint.visible{opacity:1}
+
+  /* Log */
+  .toggle-row{display:flex;gap:10px;margin-top:20px;margin-bottom:4px}
+  .btn-toggle{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-dim);font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;transition:all .25s;user-select:none}
+  .btn-toggle:hover{border-color:var(--accent);color:var(--text)}
+  .btn-toggle.open{border-color:var(--accent);color:var(--accent);border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-color:transparent;margin-bottom:0}
+  .toggle-badge{background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;min-width:18px;text-align:center;display:none}
+  .toggle-badge.visible{display:inline-block}
+  .toggle-chevron{transition:transform .25s;margin-left:auto}
+  .btn-toggle.open .toggle-chevron{transform:rotate(180deg)}
+  .collapsible-panel{border-top-left-radius:0;border-top-right-radius:0;margin-top:0;animation:slide .25s ease-out}
+  @keyframes slide{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  .console{height:200px;overflow-y:auto;padding:14px 18px;font-family:var(--font-mono);font-size:12.5px;line-height:1.8;scroll-behavior:smooth}
+  .console::-webkit-scrollbar{width:6px}
+  .console::-webkit-scrollbar-track{background:transparent}
+  .console::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .console-line{display:flex;gap:10px;animation:linein .2s ease-out}
+  @keyframes linein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  .console-time{color:var(--text-dim);flex-shrink:0;user-select:none}
+  .console-dir{font-weight:600;flex-shrink:0;user-select:none}
+  .console-dir.tx{color:var(--accent)}.console-dir.rx{color:var(--green)}.console-dir.sys{color:var(--amber)}
+  .console-msg{color:var(--text);word-break:break-all}
+  .console-empty{color:var(--text-dim);text-align:center;padding:60px 0;font-size:13px}
+  .console-toolbar{display:flex;gap:8px}
+  .btn-icon{background:none;border:1px solid transparent;color:var(--text-dim);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+  .btn-icon:hover{color:var(--text);border-color:var(--border);background:var(--surface-raised)}
+  .btn-icon svg{width:16px;height:16px}
+  .footer{text-align:center;margin-top:32px;font-size:12px;color:var(--text-dim);font-family:var(--font-mono)}
+
+  @media(max-width:600px){
+    .app{padding:16px 12px 32px}.header{padding:14px 16px;gap:14px}.logo{width:52px;height:52px}.brand-name{height:26px}.brand-tagline{font-size:10px;letter-spacing:1.5px}
+    .toolbar-row{flex-direction:row}.camera-container{max-width:100%}.gesture-display,.send-controls{max-width:100%}
+    .gesture-name{font-size:20px}.gesture-conf{font-size:24px}.send-row-gesture{flex-wrap:wrap}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="logo"><img src="logo-on.png" alt="ElectroBotics" onerror="this.style.display='none'"></div>
+    <div class="header-text">
+      <img src="ElectroBotics_No_Makerspace.png" alt="ElectroBotics" class="brand-name" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+      <div style="display:none;font-family:var(--font-body);font-size:24px;font-weight:700;color:var(--text);margin-bottom:4px;">Electro<span style="color:var(--red);font-style:italic;">Botics</span></div>
+      <div class="brand-tagline">Gesture <span style="color:var(--accent);">Controller</span></div>
+    </div>
+  </div>
+
+  <div class="toolbar-row">
+    <button class="btn btn-model" id="modelBtn" onclick="toggleModelPopup()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span id="modelBtnLabel">Load Model</span>
+    </button>
+    <button class="btn btn-connect" id="connectBtn" onclick="toggleConnection()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6.5 6.5l11 11M17.5 6.5v11h-11"/></svg>
+      Connect
+    </button>
+  </div>
+
+  <div class="model-popup" id="modelPopup">
+    <div class="model-row">
+      <input type="text" class="model-input" id="modelUrl" placeholder="Paste Teachable Machine model URL…">
+      <button class="btn btn-load" id="loadBtn" onclick="loadModel()">Load</button>
+    </div>
+    <div class="model-hint">From <a href="https://teachablemachine.withgoogle.com" target="_blank">teachablemachine.withgoogle.com</a> → Export → Upload → Copy link</div>
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-label" id="statusLabel">Connecting…</span>
+    <span class="device-name" id="deviceName" style="display:none;"></span>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Camera
+      </div>
+      <div class="cam-header-controls">
+        <button class="btn-cam" id="flipBtn" onclick="flipCamera()" disabled title="Switch camera">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/></svg>
+          Flip
+        </button>
+        <button class="btn-cam" id="cameraBtn" onclick="toggleCamera()" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          Start
+        </button>
+      </div>
+    </div>
+
+    <div class="camera-area">
+      <div class="camera-container">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="camera-overlay" id="cameraOverlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span>Load a model &amp; start camera</span>
+        </div>
+      </div>
+
+      <div class="gesture-display">
+        <div class="gesture-card" id="gestureCard">
+          <div>
+            <div class="gesture-state" id="gestureState">Waiting…</div>
+            <div class="gesture-name" id="gestureName">—</div>
+          </div>
+          <div class="gesture-conf" id="gestureConf">—</div>
+        </div>
+      </div>
+
+      <div class="send-controls">
+        <div class="send-row-gesture">
+          <label class="auto-send-toggle" id="autoSendToggle">
+            <input type="checkbox" id="autoSendCheck" onchange="toggleAutoSend()">
+            <span>Auto-send</span>
+          </label>
+          <div class="interval-input" id="intervalGroup">
+            <span class="interval-label">hold</span>
+            <input type="number" class="interval-field" id="stabilizeSec" value="0.5" min="0.1" max="5" step="0.1">
+            <span class="interval-label">s</span>
+          </div>
+          <button class="btn-send-gesture" id="sendGestureBtn" disabled onclick="sendCurrentGesture()">Send</button>
+        </div>
+        <div class="send-hint" id="sendHint">Sends once when gesture changes &amp; is held steady</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toggle-row">
+    <button class="btn-toggle" id="toggleLog" onclick="togglePanel('log')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      Log
+      <span class="toggle-badge" id="logBadge">0</span>
+      <svg class="toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </div>
+
+  <div class="panel collapsible-panel" id="logPanel" style="display:none;">
+    <div class="panel-header">
+      <div class="panel-title"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>Log</div>
+      <div class="console-toolbar">
+        <span class="panel-badge" id="msgCount">0 messages</span>
+        <button class="btn-icon" onclick="clearLog()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M5 6v14a2 2 0 002 2h10a2 2 0 002-2V6"/></svg></button>
+      </div>
+    </div>
+    <div class="console" id="logConsole"><div class="console-empty">No log entries yet</div></div>
+  </div>
+
+  <div class="footer">Built by <strong style="color:var(--accent);">ElectroBotics</strong> · Works in Chrome &amp; Edge</div>
+</div>
+
+<script>
+const UART_SVC='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const MB_SVCS=[UART_SVC,'e95d93af-251d-470a-a062-fa1922dfa9a8','e95d0753-251d-470a-a062-fa1922dfa9a8','e95d6100-251d-470a-a062-fa1922dfa9a8','e95dd91d-251d-470a-a062-fa1922dfa9a8','e95d9882-251d-470a-a062-fa1922dfa9a8','e95dd822-251d-470a-a062-fa1922dfa9a8','e95df2d8-251d-470a-a062-fa1922dfa9a8'];
+let bleDevice=null,bleServer=null,txChar=null,rxChar=null,logCount=0;
+
+async function toggleConnection(){if(bleDevice&&bleDevice.gatt.connected)bleDevice.gatt.disconnect();else await connectBLE()}
+
+async function connectBLE(){
+  try{
+    updateBLE('scanning');log('sys','Scanning…');
+    bleDevice=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'BBC micro:bit'}],optionalServices:MB_SVCS});
+    bleDevice.addEventListener('gattserverdisconnected',onDisc);
+    updateBLE('connecting');log('sys','Connecting to '+bleDevice.name+'…');
+    bleServer=await bleDevice.gatt.connect();
+    let svc;
+    try{svc=await bleServer.getPrimaryService(UART_SVC)}catch(e){log('sys','⚠ UART not found.');updateBLE('disconnected');bleDevice.gatt.disconnect();return}
+    const ch=await svc.getCharacteristics();
+    for(const c of ch){if(c.properties.write||c.properties.writeWithoutResponse)txChar=c;if(c.properties.notify||c.properties.indicate)rxChar=c}
+    if(rxChar){await rxChar.startNotifications();rxChar.addEventListener('characteristicvaluechanged',e=>{const d=new TextDecoder().decode(e.target.value).replace(/[\r\n]/g,'');if(d)log('rx',d)})}
+    updateBLE('connected',bleDevice.name);log('sys','✓ Connected.');
+    document.getElementById('sendGestureBtn').disabled=false;
+  }catch(e){if(e.name!=='NotFoundError')log('sys','Error: '+e.message);updateBLE('disconnected')}
+}
+
+function onDisc(){log('sys','Disconnected.');updateBLE('disconnected');txChar=null;rxChar=null;document.getElementById('sendGestureBtn').disabled=true}
+
+async function sendBLE(t){
+  if(!txChar)return;
+  try{const enc=new TextEncoder().encode(t+'\n');for(let i=0;i<enc.length;i+=20){const c=enc.slice(i,i+20);txChar.properties.writeWithoutResponse?await txChar.writeValueWithoutResponse(c):await txChar.writeValueWithResponse(c)}log('tx',t)}
+  catch(e){log('sys','Send error: '+e.message)}
+}
+
+function updateBLE(s,name){
+  const bar=document.getElementById('statusBar'),dot=document.getElementById('statusDot'),lbl=document.getElementById('statusLabel'),nm=document.getElementById('deviceName'),btn=document.getElementById('connectBtn');
+  bar.classList.toggle('connected',s==='connected');dot.classList.toggle('connected',s==='connected');bar.classList.toggle('visible',s!=='disconnected');
+  if(s==='connected'){lbl.textContent='Connected';nm.textContent=name;nm.style.display='inline';btn.className='btn btn-disconnect';btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Disconnect'}
+  else if(s==='scanning'||s==='connecting'){lbl.textContent=s==='scanning'?'Scanning…':'Connecting…';nm.style.display='none'}
+  else{nm.style.display='none';btn.className='btn btn-connect';btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6.5 6.5l11 11M17.5 6.5v11h-11"/></svg> Connect'}
+}
+
+// Model
+function toggleModelPopup(){document.getElementById('modelPopup').classList.toggle('open')}
+
+let model=null,isRunning=false,currentGesture=null,currentConfidence=0,autoSend=false,useFrontCamera=true;
+
+async function loadModel(){
+  const url=document.getElementById('modelUrl').value.trim();
+  if(!url){log('sys','Enter a model URL.');return}
+  document.getElementById('loadBtn').disabled=true;log('sys','Loading model…');
+  try{
+    const base=url.endsWith('/')?url:url+'/';
+    model=await tmImage.load(base+'model.json',base+'metadata.json');
+    const cl=model.getClassLabels();
+    log('sys','Model loaded: '+cl.join(', '));
+    document.getElementById('modelBtnLabel').textContent=cl.length+' classes ✓';
+    document.getElementById('modelBtn').classList.add('loaded');
+    document.getElementById('cameraBtn').disabled=false;
+    document.getElementById('flipBtn').disabled=false;
+    document.getElementById('modelPopup').classList.remove('open');
+  }catch(e){log('sys','Load error: '+e.message);document.getElementById('modelBtnLabel').textContent='Load Failed'}
+  document.getElementById('loadBtn').disabled=false;
+}
+
+// Camera
+async function toggleCamera(){isRunning?stopCamera():await startCamera()}
+
+async function startCamera(){
+  if(!model)return;
+  try{
+    const v=document.getElementById('video');
+    // Stop any existing stream first
+    if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null}
+
+    // Build constraints — use 'exact' for rear camera on mobile
+    let constraints;
+    if(useFrontCamera){
+      constraints={video:{facingMode:'user',width:{ideal:420},height:{ideal:315}}}
+    }else{
+      constraints={video:{facingMode:{exact:'environment'},width:{ideal:420},height:{ideal:315}}}
+    }
+
+    let stream;
+    try{
+      stream=await navigator.mediaDevices.getUserMedia(constraints);
+    }catch(e1){
+      // Fallback: if exact facingMode fails (single camera device), try without it
+      log('sys','Camera mode not available, using default camera.');
+      stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:420},height:{ideal:315}}});
+    }
+
+    v.setAttribute('playsinline','');
+    v.setAttribute('autoplay','');
+    v.setAttribute('muted','');
+    v.srcObject=stream;
+
+    // Wait for video to be ready
+    await new Promise((resolve,reject)=>{
+      v.onloadedmetadata=()=>{v.play().then(resolve).catch(reject)};
+      setTimeout(()=>reject(new Error('Video load timeout')),5000);
+    });
+
+    document.getElementById('cameraOverlay').classList.add('hidden');
+    isRunning=true;
+    const b=document.getElementById('cameraBtn');
+    b.className='btn-cam active';
+    b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/></svg> Stop';
+    log('sys','Camera started ('+(useFrontCamera?'front':'rear')+').');
+    predict();
+  }catch(e){
+    log('sys','Camera error: '+e.message);
+    isRunning=false;
+  }
+}
+
+function stopCamera(){
+  isRunning=false;
+  const v=document.getElementById('video');
+  if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null}
+  document.getElementById('cameraOverlay').classList.remove('hidden');
+  const b=document.getElementById('cameraBtn');
+  b.className='btn-cam';
+  b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg> Start';
+  setGesture('waiting','—','—');
+  log('sys','Camera stopped.');
+}
+
+async function flipCamera(){
+  useFrontCamera=!useFrontCamera;
+  if(isRunning){
+    // Must fully stop before restarting with new camera
+    isRunning=false;
+    const v=document.getElementById('video');
+    if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null}
+    // Small delay to let camera release fully on mobile
+    await new Promise(r=>setTimeout(r,300));
+    await startCamera();
+  }
+  log('sys','Switched to '+(useFrontCamera?'front':'rear')+' camera.');
+}
+
+// Prediction
+let candidateGesture=null,candidateStart=0,gestureSent=false,lowConfCount=0,stableGesture=null;
+
+function setGesture(state,name,conf){
+  const card=document.getElementById('gestureCard');
+  card.classList.remove('stable','sensing');
+  if(state==='stable')card.classList.add('stable');
+  if(state==='sensing')card.classList.add('sensing');
+  document.getElementById('gestureState').textContent={waiting:'Waiting…',sensing:'Sensing…',stable:'● Locked'}[state]||'Waiting…';
+  document.getElementById('gestureName').textContent=name;
+  document.getElementById('gestureConf').textContent=conf;
+}
+
+async function predict(){
+  if(!isRunning||!model)return;
+  try{
+    const preds=await model.predict(document.getElementById('video'));
+    let top=null,topC=0;
+    for(const p of preds)if(p.probability>topC){topC=p.probability;top=p.className}
+    currentGesture=top;currentConfidence=topC;
+
+    if(topC>0.7){
+      if(top!==candidateGesture){candidateGesture=top;candidateStart=Date.now();gestureSent=false;setGesture('sensing',top,Math.round(topC*100)+'%')}
+      else if(!gestureSent){
+        setGesture('sensing',top,Math.round(topC*100)+'%');
+        if(Date.now()-candidateStart>=getHold()*1000){stableGesture=top;gestureSent=true;setGesture('stable',top,Math.round(topC*100)+'%');if(autoSend&&txChar)sendBLE(top)}
+      }else{setGesture('stable',stableGesture,Math.round(topC*100)+'%')}
+      lowConfCount=0;
+    }else{lowConfCount++;if(lowConfCount>15){candidateGesture=null;candidateStart=0;gestureSent=false;lowConfCount=0;setGesture('waiting','—','—')}}
+  }catch(e){}
+  requestAnimationFrame(predict);
+}
+
+function sendCurrentGesture(){if(stableGesture)sendBLE(stableGesture);else if(currentGesture&&currentConfidence>.3)sendBLE(currentGesture)}
+function getHold(){const v=parseFloat(document.getElementById('stabilizeSec').value);return isNaN(v)||v<.1?.1:v>5?5:v}
+function toggleAutoSend(){
+  autoSend=document.getElementById('autoSendCheck').checked;
+  document.getElementById('autoSendToggle').classList.toggle('active',autoSend);
+  document.getElementById('intervalGroup').classList.toggle('active',autoSend);
+  document.getElementById('sendHint').classList.toggle('visible',autoSend);
+  if(autoSend){candidateGesture=null;candidateStart=0;gestureSent=false;lowConfCount=0;log('sys','Auto-send ON — hold '+getHold()+'s')}else log('sys','Auto-send OFF');
+}
+
+// Log
+function log(dir,text){
+  const con=document.getElementById('logConsole'),em=con.querySelector('.console-empty');if(em)em.remove();
+  const ln=document.createElement('div');ln.className='console-line';
+  const now=new Date(),ts=now.toLocaleTimeString('en-GB',{hour12:false})+'.'+String(now.getMilliseconds()).padStart(3,'0');
+  ln.innerHTML='<span class="console-time">'+ts+'</span><span class="console-dir '+dir+'">'+{sys:'SYS ●',tx:'TX →',rx:'RX ←'}[dir]+'</span><span class="console-msg">'+esc(text)+'</span>';
+  con.appendChild(ln);logCount++;document.getElementById('msgCount').textContent=logCount+' message'+(logCount!==1?'s':'');updBadge();con.scrollTop=con.scrollHeight;
+}
+function logEntry(d,t){log(d,t)}
+function clearLog(){document.getElementById('logConsole').innerHTML='<div class="console-empty">No log entries yet</div>';logCount=0;document.getElementById('msgCount').textContent='0 messages'}
+function togglePanel(n){const p=document.getElementById(n+'Panel'),b=document.getElementById('toggle'+n.charAt(0).toUpperCase()+n.slice(1));if(p.style.display==='none'){p.style.display='';b.classList.add('open');document.getElementById('logConsole').scrollTop=document.getElementById('logConsole').scrollHeight}else{p.style.display='none';b.classList.remove('open')}}
+function updBadge(){const b=document.getElementById('logBadge'),p=document.getElementById('logPanel');if(p.style.display==='none'&&logCount>0){b.textContent=logCount>99?'99+':logCount;b.classList.add('visible')}else b.classList.remove('visible')}
+function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
+
+if(!navigator.bluetooth){const w=document.createElement('div');w.style.cssText='padding:12px 18px;background:#d7624115;border:1px solid #d7624140;border-radius:12px;margin-bottom:12px;font-size:13px;color:var(--red);font-family:var(--font-mono);text-align:center';w.innerHTML='<strong>Web Bluetooth not supported.</strong> Use Chrome or Edge.';document.querySelector('.toolbar-row').after(w);document.getElementById('connectBtn').disabled=true;document.getElementById('connectBtn').style.opacity='.3'}
+</script>
+</body>
+</html>
