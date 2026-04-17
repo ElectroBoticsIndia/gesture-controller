@@ -67,17 +67,18 @@
   .btn-cam svg{width:14px;height:14px}
 
   /* Camera area — taller for mobile gesture visibility */
-  .camera-area{padding:16px;display:flex;flex-direction:column;align-items:center;gap:14px}
-  .camera-container{position:relative;width:100%;max-width:500px;aspect-ratio:3/4;background:#000;border-radius:12px;overflow:hidden;border:2px solid var(--border)}
+  .camera-area{padding:12px;display:flex;flex-direction:column;align-items:center;gap:0}
+  .camera-wrapper{position:relative;width:100%;max-width:500px}
+  .camera-container{position:relative;width:100%;aspect-ratio:3/4;background:#000;border-radius:12px;overflow:hidden;border:2px solid var(--border)}
   .camera-container video{width:100%;height:100%;object-fit:cover;display:block}
   .camera-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface);z-index:2;flex-direction:column;gap:12px}
   .camera-overlay.hidden{display:none}
   .camera-overlay svg{width:48px;height:48px;color:var(--text-dim)}
   .camera-overlay span{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);text-align:center;padding:0 20px}
 
-  /* Gesture card */
-  .gesture-display{width:100%;max-width:500px}
-  .gesture-card{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:var(--surface-raised);border:2px solid var(--border);border-radius:14px;transition:all .3s;min-height:70px}
+  /* Gesture card — overlaid on camera bottom */
+  .gesture-display{position:absolute;bottom:10px;left:10px;right:10px;z-index:3;pointer-events:none}
+  .gesture-card{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(10,55,58,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:2px solid var(--border);border-radius:12px;transition:all .3s;min-height:60px;pointer-events:auto}
   .gesture-card.stable{border-color:var(--green);box-shadow:0 0 24px var(--green-glow)}
   .gesture-card.sensing{border-color:var(--amber);box-shadow:0 0 16px var(--amber-glow)}
   .gesture-state{font-family:var(--font-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);transition:color .3s}
@@ -119,10 +120,11 @@
   .footer{text-align:center;margin-top:32px;font-size:12px;color:var(--text-dim);font-family:var(--font-mono)}
 
   @media(max-width:600px){
-    .app{padding:16px 12px 32px}.header{padding:14px 16px;gap:14px}.logo{width:52px;height:52px}.brand-name{height:26px}.brand-tagline{font-size:10px;letter-spacing:1.5px}
-    .toolbar-row{flex-direction:row}.camera-container{max-width:100%;aspect-ratio:3/4}.gesture-display{max-width:100%}
+    .app{padding:12px 10px 32px}.header{padding:14px 16px;gap:14px}.logo{width:52px;height:52px}.brand-name{height:26px}.brand-tagline{font-size:10px;letter-spacing:1.5px}
+    .toolbar-row{flex-direction:row}
+    .camera-wrapper{max-width:100%}.camera-container{aspect-ratio:3/4}
     .gesture-name{font-size:20px}.gesture-conf{font-size:24px}
-    .camera-area{padding:12px}
+    .camera-area{padding:8px}
   }
 </style>
 </head>
@@ -176,21 +178,22 @@
     </div>
 
     <div class="camera-area">
-      <div class="camera-container">
-        <video id="video" autoplay playsinline muted></video>
-        <div class="camera-overlay" id="cameraOverlay">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span>Load a model &amp; start camera</span>
-        </div>
-      </div>
-
-      <div class="gesture-display">
-        <div class="gesture-card" id="gestureCard">
-          <div>
-            <div class="gesture-state" id="gestureState">Waiting…</div>
-            <div class="gesture-name" id="gestureName">—</div>
+      <div class="camera-wrapper">
+        <div class="camera-container">
+          <video id="video" autoplay playsinline muted></video>
+          <div class="camera-overlay" id="cameraOverlay">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Load a model &amp; start camera</span>
           </div>
-          <div class="gesture-conf" id="gestureConf">—</div>
+        </div>
+        <div class="gesture-display">
+          <div class="gesture-card" id="gestureCard">
+            <div>
+              <div class="gesture-state" id="gestureState">Waiting…</div>
+              <div class="gesture-name" id="gestureName">—</div>
+            </div>
+            <div class="gesture-conf" id="gestureConf">—</div>
+          </div>
         </div>
       </div>
     </div>
