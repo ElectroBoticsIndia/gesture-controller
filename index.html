@@ -46,15 +46,10 @@
   .model-hint{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5}
   .model-hint a{color:var(--accent)}
 
-  /* BLE status bar */
-  .status-bar{display:none;align-items:center;justify-content:center;padding:8px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;gap:10px}
-  .status-bar.visible{display:flex}
-  .status-bar.connected{border-color:var(--green);box-shadow:0 0 20px var(--green-glow)}
-  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red-glow);transition:all .4s}
-  .status-dot.connected{background:var(--green);box-shadow:0 0 8px var(--green-glow);animation:pulse 2s infinite}
-  @keyframes pulse{0%,100%{box-shadow:0 0 8px var(--green-glow)}50%{box-shadow:0 0 16px var(--green-glow)}}
-  .status-label{font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--text-dim)}
-  .device-name{font-family:var(--font-mono);font-size:12px;color:var(--accent);font-weight:600}
+  /* BLE status integrated into connect button */
+  .btn-connect .status-inline{display:inline-flex;align-items:center;gap:6px}
+  .btn-connect .status-dot-inline{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 6px var(--green-glow)}50%{box-shadow:0 0 12px var(--green-glow)}}
 
   /* Panel */
   .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
@@ -71,18 +66,18 @@
   .btn-cam.active{background:var(--red);border-color:var(--red);color:#fff}
   .btn-cam svg{width:14px;height:14px}
 
-  /* Camera area */
-  .camera-area{padding:20px;display:flex;flex-direction:column;align-items:center;gap:16px}
-  .camera-container{position:relative;width:100%;max-width:420px;aspect-ratio:4/3;background:#000;border-radius:12px;overflow:hidden;border:2px solid var(--border)}
+  /* Camera area — taller for mobile gesture visibility */
+  .camera-area{padding:16px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .camera-container{position:relative;width:100%;max-width:500px;aspect-ratio:3/4;background:#000;border-radius:12px;overflow:hidden;border:2px solid var(--border)}
   .camera-container video{width:100%;height:100%;object-fit:cover;display:block}
   .camera-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface);z-index:2;flex-direction:column;gap:12px}
   .camera-overlay.hidden{display:none}
   .camera-overlay svg{width:48px;height:48px;color:var(--text-dim)}
-  .camera-overlay span{font-family:var(--font-mono);font-size:12px;color:var(--text-dim)}
+  .camera-overlay span{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);text-align:center;padding:0 20px}
 
   /* Gesture card */
-  .gesture-display{width:100%;max-width:420px}
-  .gesture-card{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;background:var(--surface-raised);border:2px solid var(--border);border-radius:14px;transition:all .3s;min-height:80px}
+  .gesture-display{width:100%;max-width:500px}
+  .gesture-card{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:var(--surface-raised);border:2px solid var(--border);border-radius:14px;transition:all .3s;min-height:70px}
   .gesture-card.stable{border-color:var(--green);box-shadow:0 0 24px var(--green-glow)}
   .gesture-card.sensing{border-color:var(--amber);box-shadow:0 0 16px var(--amber-glow)}
   .gesture-state{font-family:var(--font-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);transition:color .3s}
@@ -94,26 +89,6 @@
   .gesture-conf{font-family:var(--font-mono);font-size:32px;font-weight:700;color:var(--text-dim);transition:color .3s;flex-shrink:0}
   .gesture-card.stable .gesture-conf{color:var(--green)}
   .gesture-card.sensing .gesture-conf{color:var(--amber)}
-
-  /* Send controls */
-  .send-controls{width:100%;max-width:420px}
-  .send-row-gesture{display:flex;align-items:center;gap:10px}
-  .auto-send-toggle{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;cursor:pointer;user-select:none;flex:1;transition:all .25s}
-  .auto-send-toggle:hover{border-color:var(--accent)}
-  .auto-send-toggle.active{border-color:var(--green);background:#8ab60015}
-  .auto-send-toggle input{accent-color:var(--green);cursor:pointer;width:16px;height:16px}
-  .auto-send-toggle span{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text)}
-  .interval-input{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;opacity:.4;transition:all .25s;pointer-events:none}
-  .interval-input.active{opacity:1;pointer-events:auto;border-color:var(--accent)}
-  .interval-label{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-dim);white-space:nowrap}
-  .interval-field{width:48px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 4px;color:var(--text);font-family:var(--font-mono);font-size:13px;font-weight:700;text-align:center;outline:none;-moz-appearance:textfield}
-  .interval-field::-webkit-inner-spin-button,.interval-field::-webkit-outer-spin-button{opacity:1}
-  .interval-field:focus{border-color:var(--accent)}
-  .btn-send-gesture{background:var(--amber);color:#0a373a;padding:10px 20px;font-weight:700;font-family:var(--font-mono);font-size:13px;border:none;cursor:pointer;border-radius:10px;transition:all .25s;display:inline-flex;align-items:center;gap:6px}
-  .btn-send-gesture:hover:not(:disabled){background:#f0c050;transform:translateY(-1px)}
-  .btn-send-gesture:disabled{opacity:.3;cursor:not-allowed}
-  .send-hint{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:8px;text-align:center;opacity:0;transition:opacity .3s}
-  .send-hint.visible{opacity:1}
 
   /* Log */
   .toggle-row{display:flex;gap:10px;margin-top:20px;margin-bottom:4px}
@@ -145,8 +120,9 @@
 
   @media(max-width:600px){
     .app{padding:16px 12px 32px}.header{padding:14px 16px;gap:14px}.logo{width:52px;height:52px}.brand-name{height:26px}.brand-tagline{font-size:10px;letter-spacing:1.5px}
-    .toolbar-row{flex-direction:row}.camera-container{max-width:100%}.gesture-display,.send-controls{max-width:100%}
-    .gesture-name{font-size:20px}.gesture-conf{font-size:24px}.send-row-gesture{flex-wrap:wrap}
+    .toolbar-row{flex-direction:row}.camera-container{max-width:100%;aspect-ratio:3/4}.gesture-display{max-width:100%}
+    .gesture-name{font-size:20px}.gesture-conf{font-size:24px}
+    .camera-area{padding:12px}
   }
 </style>
 </head>
@@ -179,12 +155,6 @@
       <button class="btn btn-load" id="loadBtn" onclick="loadModel()">Load</button>
     </div>
     <div class="model-hint">From <a href="https://teachablemachine.withgoogle.com" target="_blank">teachablemachine.withgoogle.com</a> → Export → Upload → Copy link</div>
-  </div>
-
-  <div class="status-bar" id="statusBar">
-    <div class="status-dot" id="statusDot"></div>
-    <span class="status-label" id="statusLabel">Connecting…</span>
-    <span class="device-name" id="deviceName" style="display:none;"></span>
   </div>
 
   <div class="panel">
@@ -222,22 +192,6 @@
           </div>
           <div class="gesture-conf" id="gestureConf">—</div>
         </div>
-      </div>
-
-      <div class="send-controls">
-        <div class="send-row-gesture">
-          <label class="auto-send-toggle" id="autoSendToggle">
-            <input type="checkbox" id="autoSendCheck" onchange="toggleAutoSend()">
-            <span>Auto-send</span>
-          </label>
-          <div class="interval-input" id="intervalGroup">
-            <span class="interval-label">hold</span>
-            <input type="number" class="interval-field" id="stabilizeSec" value="0.5" min="0.1" max="5" step="0.1">
-            <span class="interval-label">s</span>
-          </div>
-          <button class="btn-send-gesture" id="sendGestureBtn" disabled onclick="sendCurrentGesture()">Send</button>
-        </div>
-        <div class="send-hint" id="sendHint">Sends once when gesture changes &amp; is held steady</div>
       </div>
     </div>
   </div>
@@ -285,11 +239,10 @@ async function connectBLE(){
     for(const c of ch){if(c.properties.write||c.properties.writeWithoutResponse)txChar=c;if(c.properties.notify||c.properties.indicate)rxChar=c}
     if(rxChar){await rxChar.startNotifications();rxChar.addEventListener('characteristicvaluechanged',e=>{const d=new TextDecoder().decode(e.target.value).replace(/[\r\n]/g,'');if(d)log('rx',d)})}
     updateBLE('connected',bleDevice.name);log('sys','✓ Connected.');
-    document.getElementById('sendGestureBtn').disabled=false;
   }catch(e){if(e.name!=='NotFoundError')log('sys','Error: '+e.message);updateBLE('disconnected')}
 }
 
-function onDisc(){log('sys','Disconnected.');updateBLE('disconnected');txChar=null;rxChar=null;document.getElementById('sendGestureBtn').disabled=true}
+function onDisc(){log('sys','Disconnected.');updateBLE('disconnected');txChar=null;rxChar=null}
 
 async function sendBLE(t){
   if(!txChar)return;
@@ -298,17 +251,25 @@ async function sendBLE(t){
 }
 
 function updateBLE(s,name){
-  const bar=document.getElementById('statusBar'),dot=document.getElementById('statusDot'),lbl=document.getElementById('statusLabel'),nm=document.getElementById('deviceName'),btn=document.getElementById('connectBtn');
-  bar.classList.toggle('connected',s==='connected');dot.classList.toggle('connected',s==='connected');bar.classList.toggle('visible',s!=='disconnected');
-  if(s==='connected'){lbl.textContent='Connected';nm.textContent=name;nm.style.display='inline';btn.className='btn btn-disconnect';btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Disconnect'}
-  else if(s==='scanning'||s==='connecting'){lbl.textContent=s==='scanning'?'Scanning…':'Connecting…';nm.style.display='none'}
-  else{nm.style.display='none';btn.className='btn btn-connect';btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6.5 6.5l11 11M17.5 6.5v11h-11"/></svg> Connect'}
+  const btn=document.getElementById('connectBtn');
+  if(s==='connected'){
+    btn.className='btn btn-disconnect';
+    btn.innerHTML='<span class="status-inline"><span class="status-dot-inline"></span>'+name+'</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  }else if(s==='scanning'||s==='connecting'){
+    btn.className='btn btn-connect';
+    btn.style.opacity='.7';
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6.5 6.5l11 11M17.5 6.5v11h-11"/></svg> '+(s==='scanning'?'Scanning…':'Connecting…');
+  }else{
+    btn.className='btn btn-connect';
+    btn.style.opacity='1';
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6.5 6.5l11 11M17.5 6.5v11h-11"/></svg> Connect';
+  }
 }
 
 // Model
 function toggleModelPopup(){document.getElementById('modelPopup').classList.toggle('open')}
 
-let model=null,isRunning=false,currentGesture=null,currentConfidence=0,autoSend=false,useFrontCamera=true;
+let model=null,isRunning=false,currentGesture=null,currentConfidence=0,autoSend=true,useFrontCamera=true;
 
 async function loadModel(){
   const url=document.getElementById('modelUrl').value.trim();
@@ -333,37 +294,80 @@ async function toggleCamera(){isRunning?stopCamera():await startCamera()}
 
 async function startCamera(){
   if(!model)return;
+
+  // Step 1: Check if camera API is available
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    log('sys','Camera API not available. Make sure you are using HTTPS.');
+    updateOverlay('Camera not available on this browser. Use Chrome or Safari over HTTPS.');
+    return;
+  }
+
+  // Step 2: Request permission first with the simplest possible constraint
+  // Mobile browsers (especially iOS Safari) are strict — request basic video first
   try{
     const v=document.getElementById('video');
-    // Stop any existing stream first
+    // Stop any existing stream
     if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null}
 
-    // Build constraints — use 'exact' for rear camera on mobile
-    let constraints;
-    if(useFrontCamera){
-      constraints={video:{facingMode:'user',width:{ideal:420},height:{ideal:315}}}
-    }else{
-      constraints={video:{facingMode:{exact:'environment'},width:{ideal:420},height:{ideal:315}}}
-    }
+    let stream=null;
 
-    let stream;
+    // Try with facingMode first
     try{
-      stream=await navigator.mediaDevices.getUserMedia(constraints);
+      const facingMode=useFrontCamera?'user':{exact:'environment'};
+      stream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:facingMode,width:{ideal:420},height:{ideal:315}},
+        audio:false
+      });
     }catch(e1){
-      // Fallback: if exact facingMode fails (single camera device), try without it
-      log('sys','Camera mode not available, using default camera.');
-      stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:420},height:{ideal:315}}});
+      log('sys','FacingMode failed ('+e1.name+'), trying simple video…');
+      // Fallback 1: try without facingMode constraint
+      try{
+        stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+      }catch(e2){
+        // Permission truly denied or no camera
+        if(e2.name==='NotAllowedError'||e2.name==='PermissionDeniedError'){
+          log('sys','Camera permission denied. Please allow camera access in your browser settings.');
+          updateOverlay('Camera permission denied. Tap the lock/settings icon in your browser address bar and allow camera access, then reload the page.');
+        }else if(e2.name==='NotFoundError'||e2.name==='DevicesNotFoundError'){
+          log('sys','No camera found on this device.');
+          updateOverlay('No camera detected on this device.');
+        }else if(e2.name==='NotReadableError'||e2.name==='TrackStartError'){
+          log('sys','Camera is in use by another app. Close other apps using the camera and try again.');
+          updateOverlay('Camera is busy. Close other apps using the camera and try again.');
+        }else{
+          log('sys','Camera error: '+e2.message+' ('+e2.name+')');
+          updateOverlay('Camera error: '+e2.message);
+        }
+        return;
+      }
     }
 
-    v.setAttribute('playsinline','');
-    v.setAttribute('autoplay','');
-    v.setAttribute('muted','');
+    // Step 3: Attach stream to video
     v.srcObject=stream;
 
-    // Wait for video to be ready
+    // Step 4: Wait for video to be playable
     await new Promise((resolve,reject)=>{
-      v.onloadedmetadata=()=>{v.play().then(resolve).catch(reject)};
-      setTimeout(()=>reject(new Error('Video load timeout')),5000);
+      const timeout=setTimeout(()=>reject(new Error('Video took too long to load')),8000);
+      v.onloadedmetadata=()=>{
+        clearTimeout(timeout);
+        v.play()
+          .then(resolve)
+          .catch(err=>{
+            // iOS Safari sometimes blocks play without user gesture
+            log('sys','Auto-play blocked. Tap the video area to start.');
+            updateOverlay('Tap here to start camera');
+            const tapHandler=()=>{
+              v.play().then(()=>{
+                document.getElementById('cameraOverlay').classList.add('hidden');
+                resolve();
+              }).catch(reject);
+              v.removeEventListener('click',tapHandler);
+              document.getElementById('cameraOverlay').removeEventListener('click',tapHandler);
+            };
+            v.addEventListener('click',tapHandler);
+            document.getElementById('cameraOverlay').addEventListener('click',tapHandler);
+          });
+      };
     });
 
     document.getElementById('cameraOverlay').classList.add('hidden');
@@ -379,11 +383,21 @@ async function startCamera(){
   }
 }
 
+function updateOverlay(msg){
+  const overlay=document.getElementById('cameraOverlay');
+  overlay.classList.remove('hidden');
+  const span=overlay.querySelector('span');
+  if(span)span.textContent=msg;
+}
+
 function stopCamera(){
   isRunning=false;
   const v=document.getElementById('video');
   if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null}
-  document.getElementById('cameraOverlay').classList.remove('hidden');
+  const overlay=document.getElementById('cameraOverlay');
+  overlay.classList.remove('hidden');
+  const span=overlay.querySelector('span');
+  if(span)span.textContent='Load a model & start camera';
   const b=document.getElementById('cameraBtn');
   b.className='btn-cam';
   b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg> Start';
@@ -394,12 +408,11 @@ function stopCamera(){
 async function flipCamera(){
   useFrontCamera=!useFrontCamera;
   if(isRunning){
-    // Must fully stop before restarting with new camera
     isRunning=false;
     const v=document.getElementById('video');
     if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null}
-    // Small delay to let camera release fully on mobile
-    await new Promise(r=>setTimeout(r,300));
+    // Delay for mobile camera hardware release
+    await new Promise(r=>setTimeout(r,500));
     await startCamera();
   }
   log('sys','Switched to '+(useFrontCamera?'front':'rear')+' camera.');
@@ -438,15 +451,7 @@ async function predict(){
   requestAnimationFrame(predict);
 }
 
-function sendCurrentGesture(){if(stableGesture)sendBLE(stableGesture);else if(currentGesture&&currentConfidence>.3)sendBLE(currentGesture)}
-function getHold(){const v=parseFloat(document.getElementById('stabilizeSec').value);return isNaN(v)||v<.1?.1:v>5?5:v}
-function toggleAutoSend(){
-  autoSend=document.getElementById('autoSendCheck').checked;
-  document.getElementById('autoSendToggle').classList.toggle('active',autoSend);
-  document.getElementById('intervalGroup').classList.toggle('active',autoSend);
-  document.getElementById('sendHint').classList.toggle('visible',autoSend);
-  if(autoSend){candidateGesture=null;candidateStart=0;gestureSent=false;lowConfCount=0;log('sys','Auto-send ON — hold '+getHold()+'s')}else log('sys','Auto-send OFF');
-}
+function getHold(){return 0.5}
 
 // Log
 function log(dir,text){
