@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ElectroBotics — Gesture & Pose Controller</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
 <style>
   :root{--bg:#061f22;--surface:#0a373a;--surface-raised:#0f4a4e;--border:#1a5f64;--text:#f0f7f8;--text-dim:#7fa8ac;--accent:#008fa0;--accent-glow:#008fa080;--green:#8ab600;--green-glow:#8ab60050;--red:#d76241;--red-glow:#d7624150;--amber:#eab43a;--amber-glow:#eab43a50;--font-mono:'JetBrains Mono',monospace;--font-body:'DM Sans',sans-serif;--radius:12px}
   *{margin:0;padding:0;box-sizing:border-box}
@@ -276,17 +274,40 @@ function toggleModelPopup(){document.getElementById('modelPopup').classList.togg
 let model=null,isRunning=false,currentGesture=null,currentConfidence=0,autoSend=true,useFrontCamera=true;
 let modelType=null; // 'image' or 'pose'
 
-let poseLibLoaded=false;
+let libraryLoaded=null; // 'image' or 'pose' — tracks which library set is loaded
 
-async function loadPoseLibrary(){
-  if(poseLibLoaded)return;
+function loadScript(src){
   return new Promise((resolve,reject)=>{
-    const script=document.createElement('script');
-    script.src='https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8.6/dist/teachablemachine-pose.min.js';
-    script.onload=()=>{poseLibLoaded=true;resolve()};
-    script.onerror=()=>reject(new Error('Failed to load pose library'));
-    document.head.appendChild(script);
+    const s=document.createElement('script');
+    s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('Failed to load: '+src));
+    document.head.appendChild(s);
   });
+}
+
+async function loadLibraries(type){
+  if(libraryLoaded===type)return; // Already loaded the right set
+
+  if(libraryLoaded){
+    // Different type already loaded — need page reload
+    log('sys','Switching model type requires a page reload.');
+    log('sys','Reloading page…');
+    sessionStorage.setItem('pendingModelUrl',document.getElementById('modelUrl').value);
+    location.reload();
+    return;
+  }
+
+  log('sys','Loading '+type+' libraries…');
+
+  if(type==='pose'){
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8.6/dist/teachablemachine-pose.min.js');
+  }else{
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js');
+  }
+
+  libraryLoaded=type;
+  log('sys','Libraries loaded.');
 }
 
 async function loadModel(){
@@ -312,9 +333,10 @@ async function loadModel(){
     modelType=detectedType;
     log('sys','Model type: '+modelType.toUpperCase());
 
+    // Load the correct library pair
+    await loadLibraries(modelType);
+
     if(modelType==='pose'){
-      log('sys','Loading pose library…');
-      await loadPoseLibrary();
       model=await tmPose.load(base+'model.json',base+'metadata.json');
     }else{
       model=await tmImage.load(base+'model.json',base+'metadata.json');
@@ -331,6 +353,16 @@ async function loadModel(){
   }catch(e){log('sys','Load error: '+e.message);document.getElementById('modelBtnLabel').textContent='Load Failed'}
   document.getElementById('loadBtn').disabled=false;
 }
+
+// Auto-load if returning from a model type switch reload
+window.addEventListener('DOMContentLoaded',()=>{
+  const pending=sessionStorage.getItem('pendingModelUrl');
+  if(pending){
+    sessionStorage.removeItem('pendingModelUrl');
+    document.getElementById('modelUrl').value=pending;
+    setTimeout(()=>loadModel(),500);
+  }
+});
 
 // Camera
 async function toggleCamera(){isRunning?stopCamera():await startCamera()}
