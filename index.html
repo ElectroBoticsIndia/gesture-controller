@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ElectroBotics — Gesture & Pose Controller</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@latest/dist/teachablemachine-pose.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
 <style>
   :root{--bg:#061f22;--surface:#0a373a;--surface-raised:#0f4a4e;--border:#1a5f64;--text:#f0f7f8;--text-dim:#7fa8ac;--accent:#008fa0;--accent-glow:#008fa080;--green:#8ab600;--green-glow:#8ab60050;--red:#d76241;--red-glow:#d7624150;--amber:#eab43a;--amber-glow:#eab43a50;--font-mono:'JetBrains Mono',monospace;--font-body:'DM Sans',sans-serif;--radius:12px}
   *{margin:0;padding:0;box-sizing:border-box}
@@ -277,6 +276,19 @@ function toggleModelPopup(){document.getElementById('modelPopup').classList.togg
 let model=null,isRunning=false,currentGesture=null,currentConfidence=0,autoSend=true,useFrontCamera=true;
 let modelType=null; // 'image' or 'pose'
 
+let poseLibLoaded=false;
+
+async function loadPoseLibrary(){
+  if(poseLibLoaded)return;
+  return new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8.6/dist/teachablemachine-pose.min.js';
+    script.onload=()=>{poseLibLoaded=true;resolve()};
+    script.onerror=()=>reject(new Error('Failed to load pose library'));
+    document.head.appendChild(script);
+  });
+}
+
 async function loadModel(){
   const url=document.getElementById('modelUrl').value.trim();
   if(!url){log('sys','Enter a model URL.');return}
@@ -290,7 +302,6 @@ async function loadModel(){
     try{
       const metaRes=await fetch(base+'metadata.json');
       const metaText=await metaRes.text();
-      // Pose models have "tmPose" or "posenet" or "movenet" in metadata
       if(metaText.includes('tmPose')||metaText.includes('posenet')||metaText.includes('movenet')||metaText.includes('"packageName":"@teachablemachine/pose"')){
         detectedType='pose';
       }
@@ -302,6 +313,8 @@ async function loadModel(){
     log('sys','Model type: '+modelType.toUpperCase());
 
     if(modelType==='pose'){
+      log('sys','Loading pose library…');
+      await loadPoseLibrary();
       model=await tmPose.load(base+'model.json',base+'metadata.json');
     }else{
       model=await tmImage.load(base+'model.json',base+'metadata.json');
@@ -462,6 +475,7 @@ function setGesture(state,name,conf){
 }
 
 let debugCounter=0;
+let errorLogged=false;
 
 async function predict(){
   if(!isRunning||!model)return;
@@ -471,25 +485,25 @@ async function predict(){
 
     if(modelType==='pose'){
       const result=await model.estimatePose(video);
-      if(result&&result.pose&&result.posenetOutput){
-        preds=await model.predict(result.posenetOutput);
-      }else if(result&&result.posenetOutput){
+      if(result&&result.posenetOutput){
         preds=await model.predict(result.posenetOutput);
       }else{
-        try{preds=await model.predict(video)}catch(e2){}
+        if(!errorLogged){log('sys','Pose estimation returned no data. Make sure your full body is visible.');errorLogged=true}
+        requestAnimationFrame(predict);return;
       }
-      if(!preds){requestAnimationFrame(predict);return}
     }else{
       preds=await model.predict(video);
     }
+
+    errorLogged=false; // Reset on success
 
     let top=null,topC=0;
     for(const p of preds)if(p.probability>topC){topC=p.probability;top=p.className}
     currentGesture=top;currentConfidence=topC;
 
-    // Debug: log predictions every 60 frames (~2 seconds) so we can see what's happening
+    // Debug: log predictions every 90 frames (~3 seconds)
     debugCounter++;
-    if(debugCounter%60===0){
+    if(debugCounter%90===0){
       const summary=preds.map(p=>p.className+': '+Math.round(p.probability*100)+'%').join(' | ');
       log('sys','[Debug] '+summary);
     }
@@ -503,8 +517,11 @@ async function predict(){
       lowConfCount=0;
     }else{lowConfCount++;if(lowConfCount>15){candidateGesture=null;candidateStart=0;gestureSent=false;lowConfCount=0;setGesture('waiting','—','—')}}
   }catch(e){
-    console.error('Predict error:',e);
-    log('sys','Detection error: '+e.message);
+    if(!errorLogged){
+      console.error('Predict error:',e);
+      log('sys','Detection error: '+e.message);
+      errorLogged=true;
+    }
   }
   requestAnimationFrame(predict);
 }
