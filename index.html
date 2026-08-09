@@ -468,12 +468,18 @@ async function predict(){
     let preds;
 
     if(modelType==='pose'){
-      // Pose model: estimatePose returns {pose, posenetOutput}
-      // then predict returns class predictions
-      const {pose,posenetOutput}=await model.estimatePose(video);
-      preds=await model.predict(posenetOutput);
+      // Pose model: estimatePose then predict
+      const result=await model.estimatePose(video);
+      if(result&&result.pose&&result.posenetOutput){
+        preds=await model.predict(result.posenetOutput);
+      }else if(result&&result.posenetOutput){
+        preds=await model.predict(result.posenetOutput);
+      }else{
+        // Some versions return differently — try direct predict
+        try{preds=await model.predict(video)}catch(e2){}
+      }
+      if(!preds){requestAnimationFrame(predict);return}
     }else{
-      // Image model: predict directly from video
       preds=await model.predict(video);
     }
 
@@ -489,7 +495,10 @@ async function predict(){
       }else{setGesture('stable',stableGesture,Math.round(topC*100)+'%')}
       lowConfCount=0;
     }else{lowConfCount++;if(lowConfCount>15){candidateGesture=null;candidateStart=0;gestureSent=false;lowConfCount=0;setGesture('waiting','—','—')}}
-  }catch(e){}
+  }catch(e){
+    console.error('Predict error:',e);
+    log('sys','Detection error: '+e.message);
+  }
   requestAnimationFrame(predict);
 }
 
