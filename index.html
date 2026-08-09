@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ElectroBotics — Gesture Controller</title>
+<title>ElectroBotics — Gesture & Pose Controller</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@latest/dist/teachablemachine-pose.min.js"></script>
 <style>
   :root{--bg:#061f22;--surface:#0a373a;--surface-raised:#0f4a4e;--border:#1a5f64;--text:#f0f7f8;--text-dim:#7fa8ac;--accent:#008fa0;--accent-glow:#008fa080;--green:#8ab600;--green-glow:#8ab60050;--red:#d76241;--red-glow:#d7624150;--amber:#eab43a;--amber-glow:#eab43a50;--font-mono:'JetBrains Mono',monospace;--font-body:'DM Sans',sans-serif;--radius:12px}
   *{margin:0;padding:0;box-sizing:border-box}
@@ -18,8 +19,8 @@
   .logo{width:64px;height:64px;flex-shrink:0}
   .logo img{width:100%;height:100%;object-fit:contain;display:block}
   .header-text{display:flex;flex-direction:column;justify-content:center}
-  .brand-name{height:32px;width:auto;object-fit:contain;object-position:left center;display:block;margin-bottom:4px;margin-left:-5px}
-  .brand-tagline{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:-15px}
+  .brand-name{height:32px;width:auto;object-fit:contain;object-position:left center;display:block;margin-bottom:4px}
+  .brand-tagline{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--accent);letter-spacing:2px;text-transform:uppercase}
 
   /* Toolbar: Model + Connect */
   .toolbar-row{display:flex;gap:10px;margin-bottom:12px}
@@ -137,7 +138,7 @@
     <div class="header-text">
       <img src="ElectroBotics_No_Makerspace.png" alt="ElectroBotics" class="brand-name" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
       <div style="display:none;font-family:var(--font-body);font-size:24px;font-weight:700;color:var(--text);margin-bottom:4px;">Electro<span style="color:var(--red);font-style:italic;">Botics</span></div>
-      <div class="brand-tagline">Gesture <span style="color:var(--accent);">Controller</span></div>
+      <div class="brand-tagline">Gesture &amp; Pose <span style="color:var(--accent);">Controller</span></div>
     </div>
   </div>
 
@@ -274,6 +275,7 @@ function updateBLE(s,name){
 function toggleModelPopup(){document.getElementById('modelPopup').classList.toggle('open')}
 
 let model=null,isRunning=false,currentGesture=null,currentConfidence=0,autoSend=true,useFrontCamera=true;
+let modelType=null; // 'image' or 'pose'
 
 async function loadModel(){
   const url=document.getElementById('modelUrl').value.trim();
@@ -281,10 +283,34 @@ async function loadModel(){
   document.getElementById('loadBtn').disabled=true;log('sys','Loading model…');
   try{
     const base=url.endsWith('/')?url:url+'/';
-    model=await tmImage.load(base+'model.json',base+'metadata.json');
+
+    // Auto-detect model type by checking metadata
+    log('sys','Detecting model type…');
+    let detectedType='image';
+    try{
+      const metaRes=await fetch(base+'metadata.json');
+      const metaText=await metaRes.text();
+      // Pose models have "tmPose" or "posenet" or "movenet" in metadata
+      if(metaText.includes('tmPose')||metaText.includes('posenet')||metaText.includes('movenet')||metaText.includes('"packageName":"@teachablemachine/pose"')){
+        detectedType='pose';
+      }
+    }catch(e){
+      log('sys','Could not read metadata, defaulting to Image model.');
+    }
+
+    modelType=detectedType;
+    log('sys','Model type: '+modelType.toUpperCase());
+
+    if(modelType==='pose'){
+      model=await tmPose.load(base+'model.json',base+'metadata.json');
+    }else{
+      model=await tmImage.load(base+'model.json',base+'metadata.json');
+    }
+
     const cl=model.getClassLabels();
     log('sys','Model loaded: '+cl.join(', '));
-    document.getElementById('modelBtnLabel').textContent=cl.length+' classes ✓';
+    const typeLabel=modelType==='pose'?'Pose':'Image';
+    document.getElementById('modelBtnLabel').textContent=cl.length+' classes ('+typeLabel+') ✓';
     document.getElementById('modelBtn').classList.add('loaded');
     document.getElementById('cameraBtn').disabled=false;
     document.getElementById('flipBtn').disabled=false;
@@ -438,7 +464,19 @@ function setGesture(state,name,conf){
 async function predict(){
   if(!isRunning||!model)return;
   try{
-    const preds=await model.predict(document.getElementById('video'));
+    const video=document.getElementById('video');
+    let preds;
+
+    if(modelType==='pose'){
+      // Pose model: estimatePose returns {pose, posenetOutput}
+      // then predict returns class predictions
+      const {pose,posenetOutput}=await model.estimatePose(video);
+      preds=await model.predict(posenetOutput);
+    }else{
+      // Image model: predict directly from video
+      preds=await model.predict(video);
+    }
+
     let top=null,topC=0;
     for(const p of preds)if(p.probability>topC){topC=p.probability;top=p.className}
     currentGesture=top;currentConfidence=topC;
