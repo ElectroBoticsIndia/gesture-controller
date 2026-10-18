@@ -76,6 +76,16 @@
   .camera-overlay svg{width:48px;height:48px;color:var(--text-dim)}
   .camera-overlay span{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);text-align:center;padding:0 20px}
 
+  /* Loading spinners */
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spinner{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;display:inline-block}
+  .spinner-lg{width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:spin .9s linear infinite}
+  .camera-overlay .spinner-lg{display:none}
+  .camera-overlay.loading .spinner-lg{display:block}
+  .camera-overlay.loading>svg{display:none}
+  .camera-overlay.loading span{color:var(--amber)}
+  .btn-model.loading{color:var(--amber);border-color:var(--amber);cursor:wait}
+
   /* Gesture card — overlaid on camera bottom */
   .gesture-display{position:absolute;bottom:10px;left:10px;right:10px;z-index:3;pointer-events:none}
   .gesture-card{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(10,55,58,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:2px solid var(--border);border-radius:12px;transition:all .3s;min-height:60px;pointer-events:auto}
@@ -184,6 +194,7 @@
           <video id="video" autoplay playsinline muted></video>
           <div class="camera-overlay" id="cameraOverlay">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <div class="spinner-lg"></div>
             <span>Load a model &amp; start camera</span>
           </div>
         </div>
@@ -312,10 +323,37 @@ async function loadLibraries(type){
   log('sys','Libraries loaded.');
 }
 
+let modelLoading=false;
+
+// Show/hide the loading spinner on the Model button and in the camera area
+function setModelLoading(step){
+  const btn=document.getElementById('modelBtn'),label=document.getElementById('modelBtnLabel');
+  const overlay=document.getElementById('cameraOverlay'),span=overlay.querySelector('span');
+  const icon=btn.querySelector('svg'),old=btn.querySelector('.spinner');
+  if(step){
+    modelLoading=true;
+    btn.classList.remove('loaded');btn.classList.add('loading');
+    if(!old){const s=document.createElement('span');s.className='spinner';btn.insertBefore(s,label)}
+    if(icon)icon.style.display='none';
+    label.textContent='Loading…';
+    if(!isRunning){overlay.classList.remove('hidden');overlay.classList.add('loading');if(span)span.textContent=step}
+  }else{
+    modelLoading=false;
+    btn.classList.remove('loading');
+    if(old)old.remove();
+    if(icon)icon.style.display='';
+    overlay.classList.remove('loading');
+    if(!isRunning&&span)span.textContent=model?'Model ready — press Start':'Load a model & start camera';
+  }
+}
+
 async function loadModel(){
+  if(modelLoading)return;
   const url=document.getElementById('modelUrl').value.trim();
   if(!url){log('sys','Enter a model URL.');return}
   document.getElementById('loadBtn').disabled=true;log('sys','Loading model…');
+  document.getElementById('modelPopup').classList.remove('open');
+  setModelLoading('Checking model…');
   try{
     const base=url.endsWith('/')?url:url+'/';
 
@@ -336,8 +374,10 @@ async function loadModel(){
     log('sys','Model type: '+modelType.toUpperCase());
 
     // Load the correct library pair
+    setModelLoading('Loading AI libraries…');
     await loadLibraries(modelType);
 
+    setModelLoading('Loading '+(modelType==='pose'?'pose':'image')+' model…');
     if(modelType==='pose'){
       model=await tmPose.load(base+'model.json',base+'metadata.json');
     }else{
@@ -351,8 +391,15 @@ async function loadModel(){
     document.getElementById('modelBtn').classList.add('loaded');
     document.getElementById('cameraBtn').disabled=false;
     document.getElementById('flipBtn').disabled=false;
-    document.getElementById('modelPopup').classList.remove('open');
-  }catch(e){log('sys','Load error: '+e.message);document.getElementById('modelBtnLabel').textContent='Load Failed'}
+    setModelLoading(null);
+    document.getElementById('modelBtnLabel').textContent=cl.length+' classes ('+typeLabel+') ✓';
+    document.getElementById('modelBtn').classList.add('loaded');
+  }catch(e){
+    log('sys','Load error: '+e.message);
+    setModelLoading(null);
+    document.getElementById('modelBtnLabel').textContent='Load Failed';
+    document.getElementById('modelPopup').classList.add('open');
+  }
   document.getElementById('loadBtn').disabled=false;
 }
 
